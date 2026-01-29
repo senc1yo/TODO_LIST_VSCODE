@@ -1,0 +1,83 @@
+{
+  "name": "todo-panel",
+  "displayName": "// TODO List",
+  "description": "Todo List for typescript",
+  "icon": "media/Icon_TODO.png",
+  "version": "0.0.12",
+  "publisher": "Sencillo",
+  "engines": {
+    "vscode": "^1.108.1"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:todoPanel.listView",
+    "onCommand:todoPanel.refresh",
+    "onCommand:todoPanel.openFile",
+    "onCommand:todoPanel.openWebview"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+  "viewsContainers": {
+    "panel": [
+      {
+        "id": "todoPanel",
+        "title": "TODOs",
+        "icon": "media/icon.svg"
+      }
+    ]
+  },
+  "views": {
+    "todoPanel": [
+      {
+        "id": "todoPanel.listView",
+        "name": "Project TODOs"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "command": "todoPanel.refresh",
+      "title": "Refresh TODOs",
+      "icon": "$(refresh)"
+    },
+    {
+      "command": "todoPanel.openFile",
+      "title": "Open File"
+    },
+    {
+      "command": "todoPanel.openWebview",
+      "title": "Open TODOs Webview"
+    }
+  ],
+  "menus": {
+    "view/title": [
+      {
+        "command": "todoPanel.refresh",
+        "when": "view == todoPanel.listView",
+        "group": "navigation"
+      }
+    ]
+  }
+},
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.108.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "typescript-eslint": "^8.52.0",
+    "eslint": "^9.39.2",
+    "typescript": "^5.9.3",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2"
+  }
+  
+}
