@@ -1,9 +1,9 @@
 {
   "name": "todo-panel",
   "displayName": "// TODO List",
-  "description": "Todo List for typescript",
+  "description": "Todo List panel for VSCode that scans specified folders for TODO comments and displays them in a dedicated panel.",
   "icon": "media/Icon_TODO.png",
-  "version": "0.0.12",
+  "version": "0.0.2",
   "publisher": "Sencillo",
   "engines": {
     "vscode": "^1.108.1"
@@ -12,13 +12,24 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:todoPanel.listView",
-    "onCommand:todoPanel.refresh",
-    "onCommand:todoPanel.openFile",
-    "onCommand:todoPanel.openWebview"
   ],
   "main": "./out/extension.js",
   "contributes": {
+  "configuration": {
+    "title": "Todo Panel",
+    "properties": {
+      "todoPanel.includeFolders": {
+        "type": "array",
+        "default": [
+          "src"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "description": "Workspace-relative folders to scan for TODOs (e.g. src, apps/web)."
+      }
+    }
+  },
   "viewsContainers": {
     "panel": [
       {

@@ -17,19 +17,30 @@ export class TodoProvider implements vscode.TreeDataProvider<TodoItem> {
   readonly onDidChangeTreeData: vscode.Event<TodoItem | undefined | void> = this._onDidChangeTreeData.event;
 
   private readonly disposables: vscode.Disposable[] = [];
+  private readonly watchers: vscode.FileSystemWatcher[] = [];
+  private readonly fileExtensions = ['ts', 'js', 'py', 'java', 'c', 'cpp', 'cs', 'html', 'css'];
+  private readonly todoPatterns: RegExp[] = [
+    /\/\/\s*TODO\b(?::\s*(.*))?/,
+    /\/\*\s*TODO\b(?::\s*(.*?))?\*\//,
+    /<!--\s*TODO\b(?::\s*(.*?))?\s*-->/,
+    /#\s*TODO\b(?::\s*(.*))?/
+  ];
 
   constructor(context: vscode.ExtensionContext) {
-    const watcher = vscode.workspace.createFileSystemWatcher('src/**/*.{ts,js,py,java,c,cpp,cs,html,css}');
-    this.disposables.push(
-      watcher,
-      watcher.onDidCreate(() => this.refresh()),
-      watcher.onDidChange(() => this.refresh()),
-      watcher.onDidDelete(() => this.refresh())
-    );
+    this.resetWatchers();
 
     this.disposables.push(
       vscode.workspace.onDidChangeTextDocument(event => {
-        if (event.document.uri.fsPath.includes(`${path.sep}src${path.sep}`)) {
+        if (this.shouldRefreshForPath(event.document.uri.fsPath)) {
+          this.refresh();
+        }
+      })
+    );
+
+    this.disposables.push(
+      vscode.workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration('todoPanel.includeFolders')) {
+          this.resetWatchers();
           this.refresh();
         }
       })
@@ -74,13 +85,17 @@ export class TodoProvider implements vscode.TreeDataProvider<TodoItem> {
   async getTodos(): Promise<TodoEntry[]> {
     const todos: TodoEntry[] = [];
 
-    // find all files
-    const files = await vscode.workspace.findFiles('src/**/*.{ts,js,py,java,c,cpp,cs,html,css}', '**/node_modules/**');
+    const includeGlobs = this.getIncludeGlobs();
+    const fileMap = new Map<string, vscode.Uri>();
 
-    // loop through files and search for regex
-    const todoRegex = /\/\/\s*TODO\b(?::\s*(.*))?/;
+    for (const includeGlob of includeGlobs) {
+      const files = await vscode.workspace.findFiles(includeGlob, '**/node_modules/**');
+      for (const file of files) {
+        fileMap.set(file.fsPath, file);
+      }
+    }
 
-    for (const fileUri of files) {
+    for (const fileUri of fileMap.values()) {
       let text = '';
       try {
         text = await fs.promises.readFile(fileUri.fsPath, 'utf8');
@@ -92,10 +107,10 @@ export class TodoProvider implements vscode.TreeDataProvider<TodoItem> {
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        const match = line.match(todoRegex);
+        const extracted = this.extractTodo(line);
 
-        if (match) {
-          const rawComment = match[1]?.trim() || 'TODO';
+        if (extracted) {
+          const rawComment = extracted.rawComment;
           const priority = this.getPriority(line);
           const comment = this.stripPriority(rawComment);
           const description = `${path.basename(fileUri.fsPath)} • Line ${i + 1}`;
@@ -132,6 +147,74 @@ export class TodoProvider implements vscode.TreeDataProvider<TodoItem> {
 
   private stripPriority(text: string): string {
     return text.replace(/(^|\s)-[hml](?=\s|$)/gi, '').replace(/\s{2,}/g, ' ').trim();
+  }
+
+  private extractTodo(line: string): { rawComment: string } | null {
+    for (const pattern of this.todoPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        return { rawComment: match[1]?.trim() || 'TODO' };
+      }
+    }
+    return null;
+  }
+
+  private resetWatchers(): void {
+    for (const watcher of this.watchers) {
+      watcher.dispose();
+    }
+    this.watchers.length = 0;
+
+    const includeGlobs = this.getIncludeGlobs();
+    for (const includeGlob of includeGlobs) {
+      const watcher = vscode.workspace.createFileSystemWatcher(includeGlob);
+      this.watchers.push(watcher);
+      this.disposables.push(
+        watcher,
+        watcher.onDidCreate(() => this.refresh()),
+        watcher.onDidChange(() => this.refresh()),
+        watcher.onDidDelete(() => this.refresh())
+      );
+    }
+  }
+
+  private getIncludeGlobs(): string[] {
+    const folders = this.getIncludeFolders();
+    const extensionGlob = `**/*.{${this.fileExtensions.join(',')}}`;
+
+    if (folders.length === 0) {
+      return [extensionGlob];
+    }
+
+    return folders.map(folder => {
+      const normalized = folder.replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/$/, '').trim();
+      if (!normalized || normalized === '.') {
+        return extensionGlob;
+      }
+      return `${normalized}/${extensionGlob}`;
+    });
+  }
+
+  private getIncludeFolders(): string[] {
+    const config = vscode.workspace.getConfiguration('todoPanel');
+    const folders = config.get<string[]>('includeFolders', ['src']);
+    return Array.isArray(folders) ? folders.filter(Boolean) : ['src'];
+  }
+
+  private shouldRefreshForPath(filePath: string): boolean {
+    const folders = this.getIncludeFolders();
+    if (folders.length === 0) {
+      return true;
+    }
+
+    const relative = vscode.workspace.asRelativePath(filePath, false).replace(/\\/g, '/');
+    return folders.some(folder => {
+      const normalized = folder.replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/$/, '').trim();
+      if (!normalized || normalized === '.') {
+        return true;
+      }
+      return relative === normalized || relative.startsWith(`${normalized}/`);
+    });
   }
 
   private getPriorityIcon(priority: 'h' | 'm' | 'l' | 'none'): vscode.ThemeIcon | vscode.Uri | { light: vscode.Uri; dark: vscode.Uri } | undefined {
