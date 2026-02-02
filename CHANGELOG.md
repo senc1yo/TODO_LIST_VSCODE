@@ -6,4 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Initial release
+## [0.0.3] - 2026-02-02
+
+- Scan whole workspace by default (when includeFolders not set).
+- Case-insensitive TODO matching.

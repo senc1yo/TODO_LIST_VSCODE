@@ -20,10 +20,10 @@ export class TodoProvider implements vscode.TreeDataProvider<TodoItem> {
   private readonly watchers: vscode.FileSystemWatcher[] = [];
   private readonly fileExtensions = ['ts', 'js', 'py', 'java', 'c', 'cpp', 'cs', 'html', 'css'];
   private readonly todoPatterns: RegExp[] = [
-    /\/\/\s*TODO\b(?::\s*(.*))?/,
-    /\/\*\s*TODO\b(?::\s*(.*?))?\*\//,
-    /<!--\s*TODO\b(?::\s*(.*?))?\s*-->/,
-    /#\s*TODO\b(?::\s*(.*))?/
+    /\/\/\s*TODO\b(?::\s*(.*))?/i,
+    /\/\*\s*TODO\b(?::\s*(.*?))?\*\//i,
+    /<!--\s*TODO\b(?::\s*(.*?))?\s*-->/i,
+    /#\s*TODO\b(?::\s*(.*))?/i
   ];
 
   constructor(context: vscode.ExtensionContext) {
@@ -197,8 +197,8 @@ export class TodoProvider implements vscode.TreeDataProvider<TodoItem> {
 
   private getIncludeFolders(): string[] {
     const config = vscode.workspace.getConfiguration('todoPanel');
-    const folders = config.get<string[]>('includeFolders', ['src']);
-    return Array.isArray(folders) ? folders.filter(Boolean) : ['src'];
+    const folders = config.get<string[]>('includeFolders', []);
+    return Array.isArray(folders) ? folders.filter(Boolean) : [];
   }
 
   private shouldRefreshForPath(filePath: string): boolean {

@@ -3,7 +3,7 @@
   "displayName": "// TODO List",
   "description": "Todo List panel for VSCode that scans specified folders for TODO comments and displays them in a dedicated panel.",
   "icon": "media/Icon_TODO.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "Sencillo",
   "engines": {
     "vscode": "^1.108.1"
